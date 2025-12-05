@@ -1,0 +1,28 @@
+name: Render & Deploy to Cloudflare Pages
+
+on:
+  push: { branches: [main, master] }
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - run: pip install git+https://github.com/karpathy/rendergit.git
+
+      - run: |
+          mkdir -p dist
+          rendergit ./ -o dist/index.html --no-open --max-bytes 1000000
+          [ -f dist/index.html ] || exit 1
+
+      - run: npm install -g wrangler@4.52.1
+
+      - env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: wrangler pages deploy dist --project-name=rendergit-auto
